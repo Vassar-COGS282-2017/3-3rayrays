@@ -3,7 +3,7 @@ rows <- 50
 cols <- 50
 proportion.group.1 <- .5 # proportion of red agents
 empty <- .2 # proportion of grid that will be empty space
-min.similarity <- 3/8 # minimum proportion of neighbors that are the same type to not move
+min.similarity <- 5/8 # minimum proportion of neighbors that are the same type to not move
 
 # create.grid ####
 # generates a rows x column matrix and randomly places the initial population
@@ -96,7 +96,20 @@ unhappy.agents <- function(grid, min.similarity){
 # assigned to a new empty location. a new grid is generated to reflect all of
 # the moves that took place.
 one.round <- function(grid, min.similarity){
-  
+  #newgrid = grid
+  need2Move = unhappy.agents(grid,min.similarity) 
+  empty.loc = empty.locations(grid)
+  newLocations = empty.loc[sample(1:nrow(empty.loc),nrow(empty.loc), replace=FALSE), ]
+  for (i in 1:nrow(newLocations)){
+    if(i>nrow(need2Move)){ break; }
+    empty.x = newLocations[i,1]
+    empty.y = newLocations[i,2]
+    unhappy.x = need2Move[i,1]
+    unhappy.y = need2Move[i,2]
+    grid[empty.x,empty.y] = grid[unhappy.x,unhappy.y]
+    grid[unhappy.x,unhappy.y] = 0
+  }
+  return(grid)
 }
 
 # running the simulation ####
