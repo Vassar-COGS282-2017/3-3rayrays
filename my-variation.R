@@ -59,6 +59,37 @@ similarity.to.center <- function(grid.subset, center.val){
   return(same/(same+not.same))
 }
 
+
+#### AAAAAHHHHHHHHHH!!!!!!!!
+near2School <- function(list.of.agents,school.locations){
+  dist2Schools <- logical(nrow(list.of.agents))
+  for(agent in 1:nrow(list.of.agents)){
+    row = list.of.agents[agent, 1]
+    col = list.of.agents[agent, 2]
+    min.dist2School <- 2500
+      for(skl in 1:nrow(school.locations)){
+        school.row = school.locations[skl,1]
+        school.col = school.locations[skl,2]
+        dist2School = abs(school.row-row) + abs(school.col-col)
+        if(dist2School<min.dist2School){
+          min.dist2School <- dist2School
+        }
+      }
+      if(is.na(min.dist2School)){
+        dist2Schools[row,col] <- NA
+      } else {
+        if(grid[row,col] == group.type){
+          grid.copy[row,col] <- similarity.score < min.similarity #assign true if want to move
+        } else {
+          grid.copy[row,col] <- NA
+        }
+      }
+    }
+  }
+  return(which(grid.copy==TRUE, arr.ind = T))
+}
+
+
 # segregation ####
 # computes the proportion of neighbors who are from the same group
 # changed to account for schools also not adding to the segregation value
@@ -86,7 +117,8 @@ segregation <- function(grid){
 # current location. the output is N x 2, with N equal to the
 # number of unhappy agents and the columns representing the 
 # location (row, col) of the unhappy agent in the grid
-unhappy.agents <- function(grid, min.similarity){
+#edited to be specific to group.type
+unhappy.agents <- function(grid, min.similarity,group.type){
   grid.copy <- grid
   for(row in 1:rows){
     for(col in 1:cols){
@@ -94,11 +126,15 @@ unhappy.agents <- function(grid, min.similarity){
       if(is.na(similarity.score)){
         grid.copy[row,col] <- NA
       } else {
-        grid.copy[row,col] <- similarity.score >= min.similarity
+        if(grid[row,col] == group.type){
+          grid.copy[row,col] <- similarity.score < min.similarity #assign true if want to move
+        } else {
+          grid.copy[row,col] <- NA
+        }
       }
     }
   }
-  return(which(grid.copy==FALSE, arr.ind = T))
+  return(which(grid.copy==TRUE, arr.ind = T))
 }
 
 # one.round ####
@@ -106,10 +142,11 @@ unhappy.agents <- function(grid, min.similarity){
 # all of the unhappy agents and empty spaces. then unhappy agents are randomly
 # assigned to a new empty location. a new grid is generated to reflect all of
 # the moves that took place.
-one.round <- function(grid, min.similarity){
+one.round <- function(grid, min.similarity,group.type){
   #newgrid = grid
-  need2Move = unhappy.agents(grid,min.similarity) 
+  need2Move = unhappy.agents(grid,min.similarity,group.type) 
   empty.loc = empty.locations(grid)
+  school.loc = school.locations(grid)
   newLocations = empty.loc[sample(1:nrow(empty.loc),nrow(empty.loc), replace=FALSE), ]
   for (i in 1:nrow(newLocations)){
     if(i>nrow(need2Move)){ break; }
@@ -128,7 +165,8 @@ done <- FALSE # a variable to keep track of whether the simulation is complete
 grid <- create.grid(rows, cols, proportion.group.1, empty)
 seg.tracker <- c(segregation(grid)) # keeping a running tally of the segregation scores for each round
 while(!done){
-  new.grid <- one.round(grid, min.similarity) # run one round of the simulation, and store output in new.grid
+  new.grid.temp <- one.round(grid, min.similarity,1) # run one round of the simulation for the dominant group, and store output in new.grid.temp
+  new.grid <- one.round(new.grid.temp, min.similarity,2) # run one round of the simulation for the non-dominant group, and store output in new.grid
   seg.tracker <- c(seg.tracker, segregation(grid)) # calculate segregation score and add to running list
   if(all(new.grid == grid)){ # check if the new.grid is identical to the last grid
     done <- TRUE # if it is, simulation is over -- no agents want to move
