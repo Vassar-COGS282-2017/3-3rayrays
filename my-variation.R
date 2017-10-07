@@ -4,6 +4,7 @@ cols <- 50
 proportion.group.1 <- .5 # proportion of red agents
 non.residential <- .25 # proportion of grid that will be empty space or schools
 min.similarity <- 5/8 # minimum proportion of neighbors that are the same type to not move
+radius = 3 #radius is num of blocks that they can be away from school to be considered near a school
 
 # create.grid ####
 # generates a rows x column matrix and randomly places the initial population
@@ -14,7 +15,7 @@ create.grid <- function(rows, cols, proportion.group.1, non.residential){
   pop.size.group.1 <- (rows*cols)*(1-non.residential)*proportion.group.1
   pop.size.group.2 <- (rows*cols)*(1-non.residential)*(1-proportion.group.1)
   init.empty <- (rows*cols)-pop.size.group.1-pop.size.group.2
-  schools <- rows*cols/100
+  schools <- rows*cols/100*4
   empty <- init.empty - schools
   if(!empty>0){ break; }
   
@@ -31,8 +32,16 @@ create.grid <- function(rows, cols, proportion.group.1, non.residential){
 # outputs a visualization of the grid, with red squares representing group 1,
 # blue squares group 2, yellow squares as schools, and white squares empty locations.
 visualize.grid <- function(grid){
-  image(grid, col=c('white','red','blue','yellow'), xaxs="Yellow: Schools, Red: Dominant Group", yaxs=NULL, xaxt='n', yaxt='n')
+  image(grid, col=c('white','red','blue','yellow'), xaxs=NULL, yaxs=NULL, xaxt='n', yaxt='n')
+        #xaxs=NULL, yaxs=NULL, xaxt='n', yaxt='n', xlab="Yellow: Schools, Red: Dominant Group")
+  title(main = "Yellow: Schools, Red: Dominant Group", sub = NULL, xlab = NULL, ylab = NULL,
+        line = NA, outer = FALSE)
+  #axis( 1, at=NULL, labels= c("Yellow: Schools, Red: Dominant Group"), tic = FALSE)
 }
+
+## testing visualize.grid
+# newgrid <- create.grid(rows, cols, proportion.group.1, empty)
+# visualize.grid(newgrid)
 
 # empty.locations ####
 # returns all the locations in the grid that are empty
@@ -52,43 +61,33 @@ school.locations <- function(grid){
 # ignoring empty cells. the center.val must be specified
 # manually in case the grid has an even number of rows or 
 # columns
-similarity.to.center <- function(grid.subset, center.val){
+
+similarity.to.center <- function(grid.subset, center.val,row,col){
   if(center.val == 0){ return(NA) }
   same <- sum(grid.subset==center.val) - 1
   not.same <- sum(grid.subset!=center.val) - sum(grid.subset==0)
+  if(center.val == 1 && !near2school(row,col,radius)){
+    same = 0 #if the individual is part of the dominant group and is not near a school, return that they absolutely have to move
+  }
+  if(center.val == 2 && !near2school(row,col,radius)){
+    same = same/2 #if the individual is part of non-dominant group and is not near a school, make them more unhappy
+  }
   return(same/(same+not.same))
 }
 
-
-#### AAAAAHHHHHHHHHH!!!!!!!!
-near2School <- function(list.of.agents,school.locations){
-  dist2Schools <- logical(nrow(list.of.agents))
-  for(agent in 1:nrow(list.of.agents)){
-    row = list.of.agents[agent, 1]
-    col = list.of.agents[agent, 2]
-    min.dist2School <- 2500
-      for(skl in 1:nrow(school.locations)){
-        school.row = school.locations[skl,1]
-        school.col = school.locations[skl,2]
-        dist2School = abs(school.row-row) + abs(school.col-col)
-        if(dist2School<min.dist2School){
-          min.dist2School <- dist2School
-        }
-      }
-      if(is.na(min.dist2School)){
-        dist2Schools[row,col] <- NA
-      } else {
-        if(grid[row,col] == group.type){
-          grid.copy[row,col] <- similarity.score < min.similarity #assign true if want to move
-        } else {
-          grid.copy[row,col] <- NA
-        }
+near2school <- function(row,col,radius){
+  grid.subset = grid[max(0, row-radius):min(rows,row+radius), max(0,col-radius):min(cols,col+radius)]
+  output = FALSE
+  for (r in 1:nrow(grid.subset)){
+    for (c in 1:ncol(grid.subset)){
+      if(grid.subset[r,c]==3){
+        output = TRUE
+        break
       }
     }
   }
-  return(which(grid.copy==TRUE, arr.ind = T))
+  return(output)
 }
-
 
 # segregation ####
 # computes the proportion of neighbors who are from the same group
@@ -122,7 +121,7 @@ unhappy.agents <- function(grid, min.similarity,group.type){
   grid.copy <- grid
   for(row in 1:rows){
     for(col in 1:cols){
-      similarity.score <- similarity.to.center(grid[max(0, row-1):min(rows,row+1), max(0,col-1):min(cols,col+1)], grid[row,col])
+      similarity.score <- similarity.to.center(grid[max(0, row-1):min(rows,row+1), max(0,col-1):min(cols,col+1)], grid[row,col],row,col)
       if(is.na(similarity.score)){
         grid.copy[row,col] <- NA
       } else {
@@ -162,7 +161,8 @@ one.round <- function(grid, min.similarity,group.type){
 
 # running the simulation ####
 done <- FALSE # a variable to keep track of whether the simulation is complete
-grid <- create.grid(rows, cols, proportion.group.1, empty)
+grid <- create.grid(rows, cols, proportion.group.1, non.residential)
+visualize.grid(grid)
 seg.tracker <- c(segregation(grid)) # keeping a running tally of the segregation scores for each round
 while(!done){
   new.grid.temp <- one.round(grid, min.similarity,1) # run one round of the simulation for the dominant group, and store output in new.grid.temp
@@ -174,6 +174,8 @@ while(!done){
     grid <- new.grid # otherwise, replace grid with new.grid, and loop again.
   }
 }
-layout(1:2) # change graphics device to have two plots
+layout(1:1)
+#layout(1:2) # change graphics device to have two plots
 visualize.grid(grid) # show resulting grid
 plot(seg.tracker) # plot segregation over time
+
