@@ -1,9 +1,16 @@
+# I added in schools, where there are just 4 schools for every 100 squares on the grid. The schools are visualized in yellow, and they do not relocate during the simulation. Both population groups want to locate near the schools, but one has privilege over the other. This is group one (red), which also has a larger proportion of agents.
+
+# I built a function school.locations(grid) to return a list of school locations, which I ended up not actually using. In similarity.to.center(grid.subset,center.val,row,col), I had individuals from group one return a value of 0, so that they absolutely have to move, when they are not located near a school (with distance radius). Individuals from group two, the disadvantaged group, return a value that is smaller than before, by setting same = same/2. I test whether an individual is near a school within a radius using the function near2school(row,col,radius). 
+
+# We can see the results of the simulation are the same type of segregation, but that red neighborhoods are more centered around a higher concentration of schools than the blue neighborhoods. This somewhat mimics school choice and access as a function of location choice and privilege.
+
+
 # model parameters ####
 rows <- 50 
 cols <- 50
 proportion.group.1 <- .5 # proportion of red agents
 non.residential <- .25 # proportion of grid that will be empty space or schools
-min.similarity <- 5/8 # minimum proportion of neighbors that are the same type to not move
+min.similarity <- 4/8 # minimum proportion of neighbors that are the same type to not move
 radius = 3 #radius is num of blocks that they can be away from school to be considered near a school
 
 # create.grid ####
@@ -145,7 +152,7 @@ one.round <- function(grid, min.similarity,group.type){
   #newgrid = grid
   need2Move = unhappy.agents(grid,min.similarity,group.type) 
   empty.loc = empty.locations(grid)
-  school.loc = school.locations(grid)
+  #school.loc = school.locations(grid)
   newLocations = empty.loc[sample(1:nrow(empty.loc),nrow(empty.loc), replace=FALSE), ]
   for (i in 1:nrow(newLocations)){
     if(i>nrow(need2Move)){ break; }
